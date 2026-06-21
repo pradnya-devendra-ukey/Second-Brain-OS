@@ -18,6 +18,26 @@ from ingestion.ingest import ingest_documents
 
 app = FastAPI(title="Second Brain OS API", version="1.0.0")
 
+@app.on_event("startup")
+def startup_event():
+    """Build the database if it doesn't exist or is empty."""
+    db_dir = BASE_DIR / "vectordb"
+    # Ensure directories exist
+    db_dir.mkdir(parents=True, exist_ok=True)
+    PDF_DIR.mkdir(parents=True, exist_ok=True)
+    NOTES_DIR.mkdir(parents=True, exist_ok=True)
+
+    db_files = [f for f in db_dir.iterdir() if f.name != ".gitkeep"]
+    if len(db_files) == 0:
+        print("Vector database is empty. Initializing automatic ingestion...")
+        try:
+            provider = get_embeddings_provider()
+            print(f"Using embedding provider for startup ingestion: {provider}")
+            count = ingest_documents(clear_db=True, embedding_provider=provider)
+            print(f"Successfully ingested {count} chunks on startup.")
+        except Exception as e:
+            print(f"Error during startup ingestion: {e}")
+
 # Enable CORS middleware
 app.add_middleware(
     CORSMiddleware,
