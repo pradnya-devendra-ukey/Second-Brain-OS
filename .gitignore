@@ -1,28 +1,53 @@
-# Virtual environment
+# Virtual environments
 venv/
 .venv/
 env/
 .env/
+ENV/
+env.bak/
+venv.bak/
 
 # Sensitive files
 .env
+.env.local
+.env.*.local
 
-# Vector database
+# Vector database & Local indices
 vectordb/
 vectordb_test/
 
-# Data files (keep the folders but ignore files inside them)
+# Data files (keep folders but ignore files inside except .gitkeep and LLM.pdf)
 data/pdfs/*
 !data/pdfs/.gitkeep
 !data/pdfs/LLM.pdf
 data/notes/*
 !data/notes/.gitkeep
 
-# Python cache & logs
+# Python compilation and caching
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*~
+
+# Operating System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# App-specific logs & generated folders
 *.log
 .system_generated/
 logs/

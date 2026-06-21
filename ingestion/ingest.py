@@ -81,7 +81,7 @@ def get_embeddings_provider():
         except Exception:
             pass
 
-    google_api_key = os.environ.get("GOOGLE_API_KEY")
+    google_api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
     openai_api_key = os.environ.get("OPENAI_API_KEY")
     if google_api_key:
         return "google"

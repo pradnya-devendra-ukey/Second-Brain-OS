@@ -198,12 +198,12 @@ def chat_query(req: ChatRequest):
     except Exception as e:
         error_msg = str(e)
         if "RESOURCE_EXHAUSTED" in error_msg or "429" in error_msg:
-            google_api_key = os.environ.get("GOOGLE_API_KEY")
+            google_api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
             openai_api_key = os.environ.get("OPENAI_API_KEY")
             if google_api_key:
                 raise HTTPException(
                     status_code=429, 
-                    detail="Gemini API Quota Exhausted. The GOOGLE_API_KEY in your .env file is either the default placeholder or has run out of quota. Please update it with a valid API key."
+                    detail="Gemini API Quota Exhausted. The GOOGLE_API_KEY/GEMINI_API_KEY in your .env file is either the default placeholder or has run out of quota. Please update it with a valid API key."
                 )
             elif openai_api_key:
                 raise HTTPException(
@@ -218,7 +218,7 @@ def chat_query(req: ChatRequest):
         elif "API_KEY_INVALID" in error_msg or "API key not valid" in error_msg or "400" in error_msg:
             raise HTTPException(
                 status_code=400, 
-                detail="Invalid API Key. Please verify the GOOGLE_API_KEY or OPENAI_API_KEY in your .env file."
+                detail="Invalid API Key. Please verify the GOOGLE_API_KEY/GEMINI_API_KEY or OPENAI_API_KEY in your .env file."
             )
         raise HTTPException(status_code=500, detail=f"Error processing RAG chain: {error_msg}")
 
