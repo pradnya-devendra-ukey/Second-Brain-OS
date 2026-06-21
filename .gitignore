@@ -1,0 +1,29 @@
+# Virtual environment
+venv/
+.venv/
+env/
+.env/
+
+# Sensitive files
+.env
+
+# Vector database
+vectordb/
+vectordb_test/
+
+# Data files (keep the folders but ignore files inside them)
+data/pdfs/*
+!data/pdfs/.gitkeep
+data/notes/*
+!data/notes/.gitkeep
+
+# Python cache & logs
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+.system_generated/
+logs/
+browser/
+CORTEX_*
