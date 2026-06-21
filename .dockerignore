@@ -11,6 +11,7 @@ vectordb/
 vectordb_test/
 data/pdfs/*
 !data/pdfs/.gitkeep
+!data/pdfs/LLM.pdf
 data/notes/*
 !data/notes/.gitkeep
 Dockerfile

@@ -14,6 +14,7 @@ vectordb_test/
 # Data files (keep the folders but ignore files inside them)
 data/pdfs/*
 !data/pdfs/.gitkeep
+!data/pdfs/LLM.pdf
 data/notes/*
 !data/notes/.gitkeep
 
