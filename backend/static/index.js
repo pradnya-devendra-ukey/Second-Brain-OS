@@ -271,34 +271,62 @@ function queueAutoSave() {
 // --- FILE UPLOADS ---
 async function uploadFile(file) {
     uploadStatus.style.display = "block";
-    uploadStatus.innerHTML = `<span style="color: var(--text-secondary)">Uploading ${file.name}...</span>`;
-    
+    uploadStatus.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:center;">
+            <div style="color:var(--text-secondary);font-size:13px;">📤 Saving <strong>${escapeHtml(file.name)}</strong>…</div>
+            <div style="width:100%;height:3px;background:var(--bg-surface-hover);border-radius:2px;overflow:hidden;">
+                <div id="upload-progress-bar" style="height:100%;width:0%;background:var(--accent);border-radius:2px;transition:width 0.4s ease;"></div>
+            </div>
+        </div>`;
+
+    // Animate the progress bar to give visual feedback during the network request.
+    // Advances quickly to 80% then slows — real completion snaps to 100%.
+    const bar = document.getElementById("upload-progress-bar");
+    let fakeProgress = 0;
+    const progressTimer = setInterval(() => {
+        const step = fakeProgress < 80 ? 6 : 1;
+        fakeProgress = Math.min(fakeProgress + step, 92);
+        if (bar) bar.style.width = fakeProgress + "%";
+    }, 120);
+
     const formData = new FormData();
     formData.append("file", file);
-    
+
     try {
         const response = await fetch(`${API_BASE}/documents/upload`, {
             method: "POST",
             body: formData
         });
-        
+
+        clearInterval(progressTimer);
+        if (bar) bar.style.width = "100%";
+
         if (!response.ok) {
             const data = await response.json();
             throw new Error(data.detail || "Upload failed");
         }
-        
+
         const newDoc = await response.json();
         notes.unshift(newDoc);
-        uploadStatus.innerHTML = `<span style="color: var(--success)">Successfully ingested ${file.name}!</span>`;
-        
+
+        uploadStatus.innerHTML = `
+            <div style="display:flex;flex-direction:column;gap:6px;align-items:center;">
+                <span style="color:var(--success);font-size:14px;font-weight:600;">✅ ${escapeHtml(file.name)} saved!</span>
+                <span style="color:var(--text-muted);font-size:12px;">🔄 Indexing in background — it will be searchable in a few seconds.</span>
+            </div>`;
+
         setTimeout(() => {
             uploadModal.style.display = "none";
+            uploadStatus.style.display = "none";
             selectNote(newDoc);
             renderNotesList();
             refreshGraphData();
-        }, 1200);
+        }, 2000);
+
     } catch (e) {
-        uploadStatus.innerHTML = `<span style="color: var(--danger)">Error: ${e.message}</span>`;
+        clearInterval(progressTimer);
+        if (bar) bar.style.width = "0%";
+        uploadStatus.innerHTML = `<span style="color:var(--danger)">❌ Error: ${escapeHtml(e.message)}</span>`;
     }
 }
 
