@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Second Brain OS - RAG Powered Workspace</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/index.css">
+</head>
+<body>
+    <div class="app-container">
+        
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1 class="brand">🧠 Brain<span>OS</span></h1>
+                <button class="btn-icon" id="settings-btn" title="System Settings">
+                    <!-- Settings Gear Icon -->
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                </button>
+            </div>
+            
+            <div class="sidebar-actions">
+                <button class="btn-primary" id="new-note-btn">
+                    <!-- Plus Icon -->
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    New Note
+                </button>
+                
+                <button class="btn-primary" id="upload-doc-btn" style="background-color: var(--bg-surface-hover); border: 1px solid var(--border-color); color: var(--text-primary);">
+                    <!-- Upload Icon -->
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    Upload Document
+                </button>
+                
+                <div class="search-box">
+                    <span class="search-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    </span>
+                    <input type="text" id="search-input" placeholder="Search Second Brain...">
+                </div>
+            </div>
+            
+            <!-- Notes Explorer List -->
+            <div class="note-list-container" id="notes-list">
+                <!-- Dynamic Content Loads Here -->
+                <div style="color: var(--text-muted); text-align: center; margin-top: 40px; font-size: 13px;">No notes found</div>
+            </div>
+        </aside>
+        
+        <!-- MAIN PANEL -->
+        <main class="main-content">
+            <header class="content-header">
+                <div class="view-tabs">
+                    <button class="tab-btn active" data-pane="editor-pane">Editor</button>
+                    <button class="tab-btn" data-pane="graph-pane">Knowledge Graph</button>
+                </div>
+                <div class="header-status" id="save-status">
+                    <!-- Status Icon/Text -->
+                    <span style="color: var(--success); font-size: 12px; display: flex; align-items: center; gap: 6px;">
+                        <span style="width: 6px; height: 6px; border-radius: 50%; background: var(--success);"></span>
+                        Ready
+                    </span>
+                </div>
+            </header>
+            
+            <!-- Editor View -->
+            <div class="view-pane active" id="editor-pane">
+                <div class="editor-container">
+                    <input type="text" class="editor-title-input" id="note-title" placeholder="Untitled Note">
+                    <textarea class="editor-body" id="note-body" placeholder="Write something... Use [[Note Title]] to link notes."></textarea>
+                    <div class="editor-status">
+                        <span id="char-count">0 characters</span>
+                        <span>•</span>
+                        <span id="word-count">0 words</span>
+                        <span>•</span>
+                        <button id="delete-note-btn" style="background: transparent; border: none; color: var(--danger); cursor: pointer; font-size: 12px; font-weight: 600;">Delete Note</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Graph View -->
+            <div class="view-pane" id="graph-pane">
+                <canvas id="graph-canvas"></canvas>
+                <div class="graph-instruction">Left-click and drag nodes. Click to edit. Scroll to zoom.</div>
+            </div>
+        </main>
+        
+        <!-- CHAT COMPANION -->
+        <section class="chat-panel">
+            <div class="chat-header">
+                <h2 style="font-size: 15px; font-weight: 700; color: var(--text-primary);">AI Copilot</h2>
+                <button class="btn-icon" id="clear-chat-btn" title="Clear Conversation">
+                    <!-- Trash Icon -->
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                </button>
+            </div>
+            
+            <div class="chat-messages" id="chat-box">
+                <!-- Messages load dynamically -->
+                <div class="message assistant">
+                    Hello! Ask me any questions about your notes, PDFs, and uploaded documents. I will search your knowledge base and provide source-cited answers.
+                </div>
+            </div>
+            
+            <div class="chat-input-container">
+                <form class="chat-input-form" id="chat-form">
+                    <input type="text" id="chat-input" placeholder="Ask your Second Brain..." autocomplete="off">
+                    <button class="btn-primary" type="submit" style="padding: 10px 14px;">
+                        <!-- Send Arrow Icon -->
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    </button>
+                </form>
+            </div>
+        </section>
+        
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">System Settings</h3>
+                <button class="btn-icon" id="close-settings-modal">&times;</button>
+            </div>
+            <div class="form-group">
+                <label for="llm-provider">LLM Provider</label>
+                <select id="llm-provider">
+                    <option value="openai">OpenAI (Cloud)</option>
+                    <option value="local">Ollama (Local / Offline)</option>
+                </select>
+            </div>
+            <div class="form-group" id="openai-key-group">
+                <label for="openai-api-key">OpenAI API Key</label>
+                <input type="password" id="openai-api-key" placeholder="sk-...">
+            </div>
+            <div class="form-group" id="local-model-group" style="display: none;">
+                <label for="ollama-model">Ollama Model</label>
+                <input type="text" id="ollama-model" value="llama3">
+            </div>
+            <button class="btn-primary" id="save-settings-btn" style="width: 100%; margin-top: 10px;">Save Configuration</button>
+        </div>
+    </div>
+
+    <!-- DOCUMENT UPLOAD MODAL -->
+    <div class="modal-overlay" id="upload-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Ingest Document</h3>
+                <button class="btn-icon" id="close-upload-modal">&times;</button>
+            </div>
+            <div class="drag-area" id="drop-zone">
+                <div class="drag-icon">📁</div>
+                <div class="drag-text">Drag & drop document here or click to browse</div>
+                <div class="drag-sub">Supported formats: PDF, Markdown (.md), Text (.txt)</div>
+                <input type="file" id="file-input" style="display: none;" accept=".pdf,.md,.txt,.markdown">
+            </div>
+            <div id="upload-status" style="display: none; font-size: 13px; text-align: center; margin-top: 8px;"></div>
+        </div>
+    </div>
+
+    <!-- JS Scripts -->
+    <script src="/static/index.js"></script>
+</body>
+</html>

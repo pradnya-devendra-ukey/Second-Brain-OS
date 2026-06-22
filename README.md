@@ -1,69 +1,128 @@
 # 🧠 Second Brain OS
 
-Second Brain OS is a premium, AI-powered personal knowledge assistant and semantic search engine. Built with a FastAPI backend and a beautiful glassmorphic frontend, it allows users to upload documents (PDFs, text notes, markdown files) and query them using modern Retrieval-Augmented Generation (RAG).
-
-## 🚀 Features
-
-- **Multi-Format Document Ingestion:** Supports PDF, TXT, and MD files.
-- **Hybrid Embedding Pipeline:** Automatically indexes documents locally using HuggingFace (`all-MiniLM-L6-v2`) to save API costs.
-- **RAG QA Chain:** Fully optimized retrieval chain using LangChain, supporting chat history and context synthesis.
-- **Multi-LLM Integration:** Supports both Google Gemini (defaulting to `gemini-2.5-flash`) and OpenAI (`gpt-4o-mini`).
-- **Modern UI:** Responsive sidebar control panel, real-time database status badges, and interactive chat interface.
+A local-first, RAG-powered personal knowledge management system. Upload PDFs, Markdown, and text files, take notes with bi-directional linking, and chat with your entire knowledge base using an AI copilot — all running on your own machine with Ollama or OpenAI.
 
 ---
 
-## 🛠️ Local Setup
+## ✨ Features
 
-### 1. Prerequisites
-- Python 3.10 or 3.11
-- API Keys for Google Gemini or OpenAI
+- **📝 Note Editor** — rich text notes with auto-save and `[[wiki-link]]` support
+- **📄 Document Ingestion** — upload PDF, `.md`, and `.txt` files; content is parsed and indexed automatically
+- **🔍 Semantic Search (RAG)** — ask questions and get source-cited answers from your knowledge base
+- **🕸️ Knowledge Graph** — interactive force-directed graph visualizing note connections
+- **🤖 AI Copilot** — streaming chat powered by OpenAI GPT or local Ollama (fully offline)
+- **🔄 Auto Dimension Handling** — switching between OpenAI ↔ Ollama embeddings automatically recreates the vector store
 
-### 2. Installation
-Clone the repository and install requirements inside a virtual environment:
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Python 3.10+
+- [Ollama](https://ollama.com/) (for local/offline mode) **or** an OpenAI API key (for cloud mode)
+
+### 1. Clone & set up the environment
 
 ```bash
-# Clone the repository
-git clone https://github.com/pradnya-devendra-ukey/Second-Brain-OS.git
-cd Second-Brain-OS
+git clone https://github.com/pradnya-devendra-ukey/second-brain-os.git
+cd second-brain-os
 
-# Create and activate virtual environment
 python -m venv venv
-source venv/Scripts/activate  # On Windows: .\venv\Scripts\activate
+# Windows:
+venv\Scripts\activate
+# macOS/Linux:
+source venv/bin/activate
 
-# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 3. Environment Variables
-Create a `.env` file in the root directory:
-
-```env
-GOOGLE_API_KEY="your_gemini_api_key"
-OPENAI_API_KEY="your_openai_api_key"
-```
-
-### 4. Running the Application
-Start the FastAPI server:
+### 2. Configure environment variables
 
 ```bash
-uvicorn main:app --reload
+cp .env.example .env
+# Edit .env with your preferred settings
 ```
-Open **http://127.0.0.1:8000** in your browser.
+
+**For local/offline mode (Ollama):**
+```env
+USE_LOCAL_LLM=True
+OLLAMA_LLM_MODEL=llama3
+OLLAMA_EMBEDDING_MODEL=nomic-embed-text
+```
+Pull required models first:
+```bash
+ollama pull llama3
+ollama pull nomic-embed-text
+```
+
+**For cloud mode (OpenAI):**
+```env
+USE_LOCAL_LLM=False
+OPENAI_API_KEY=sk-...your-key...
+```
+
+### 3. Start the server
+
+```bash
+# Windows (double-click or run in terminal):
+start.bat
+
+# Or manually:
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --app-dir backend
+```
+
+Open **http://localhost:8000** in your browser.
 
 ---
 
-## 🐳 Docker Deployment
+## 🗂️ Project Structure
 
-The application is fully containerized. You can build and run it with persistence:
-
-```bash
-# Build the Docker image
-docker build -t second-brain-os .
-
-# Run the container with volume mapping
-docker run -p 8000:8000 \
-  --env-file .env \
-  -v $(pwd)/data:/app/data \
-  -v $(pwd)/vectordb:/app/vectordb \
-  second-brain-os
 ```
+second-brain-os/
+├── backend/
+│   ├── app/
+│   │   ├── main.py              # FastAPI entry point
+│   │   ├── config.py            # Settings (pydantic-settings + .env)
+│   │   ├── schemas.py           # Pydantic request/response models
+│   │   ├── database/
+│   │   │   ├── db.py            # SQLAlchemy engine & session
+│   │   │   └── models.py        # Note, ChatSession, ChatMessage models
+│   │   ├── routers/
+│   │   │   ├── notes.py         # CRUD + wiki-link parser
+│   │   │   ├── documents.py     # File upload & ingestion endpoint
+│   │   │   └── chat.py          # RAG chat + streaming endpoint
+│   │   └── services/
+│   │       ├── document_parser.py  # PDF / MD / TXT extraction
+│   │       ├── rag_service.py      # Chunking + LLM streaming
+│   │       └── vector_db.py        # LanceDB embed/search (auto-dim fix)
+│   ├── static/
+│   │   ├── index.html           # Single-page frontend
+│   │   ├── index.css            # Styles
+│   │   └── index.js             # All frontend logic
+│   └── requirements.txt
+├── .env.example                 # Environment variable template
+├── requirements.txt
+└── start.bat                    # Windows one-click launcher
+```
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Backend | FastAPI + Uvicorn |
+| Database | SQLite (SQLAlchemy) |
+| Vector Store | LanceDB |
+| Embeddings | OpenAI `text-embedding-3-small` or Ollama `nomic-embed-text` |
+| LLM | OpenAI GPT-4o-mini or Ollama `llama3` |
+| Document Parsing | PyMuPDF (PDF), plain text for MD/TXT |
+| Frontend | Vanilla HTML/CSS/JS (no framework) |
+
+---
+
+## ⚠️ Important Notes
+
+- **`.env` is never committed** — it contains your API keys. Use `.env.example` as a template.
+- **Switching embedding providers** (OpenAI ↔ Ollama) will automatically drop and recreate the LanceDB vector table (different dimensions). Previously indexed documents will need to be re-uploaded.
+- The `uploads/`, `lancedb_data/`, and `*.db` files are excluded from git and are generated at runtime.

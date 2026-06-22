@@ -4,24 +4,19 @@ venv/
 env/
 .env/
 ENV/
-env.bak/
-venv.bak/
 
-# Sensitive files
+# Sensitive files — never commit real secrets
 .env
 .env.local
 .env.*.local
 
-# Vector database & Local indices
-vectordb/
-vectordb_test/
+# Local databases & vector store (regenerated at runtime)
+lancedb_data/
+second_brain.db
+*.db
 
-# Data files (keep folders but ignore files inside except .gitkeep and LLM.pdf)
-data/pdfs/*
-!data/pdfs/.gitkeep
-!data/pdfs/LLM.pdf
-data/notes/*
-!data/notes/.gitkeep
+# Uploaded user files
+uploads/
 
 # Python compilation and caching
 __pycache__/
@@ -30,7 +25,6 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-.ipynb_checkpoints/
 
 # IDEs and Editors
 .vscode/
@@ -42,14 +36,12 @@ __pycache__/
 *.swp
 *~
 
-# Operating System files
+# OS files
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# App-specific logs & generated folders
+# Logs
 *.log
-.system_generated/
 logs/
-browser/
-CORTEX_*
+.system_generated/
