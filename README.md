@@ -1,6 +1,6 @@
 # 🧠 Second Brain OS
 
-A local-first, RAG-powered personal knowledge management system. Upload PDFs, Markdown, and text files, take notes with bi-directional linking, and chat with your entire knowledge base using an AI copilot — all running on your own machine with Ollama or OpenAI.
+A local-first, RAG-powered personal knowledge management system. Upload PDFs, Markdown, and text files, take notes with bi-directional linking, and chat with your entire knowledge base using an AI copilot — powered by Google Gemini API.
 
 ---
 
@@ -10,8 +10,9 @@ A local-first, RAG-powered personal knowledge management system. Upload PDFs, Ma
 - **📄 Document Ingestion** — upload PDF, `.md`, and `.txt` files; content is parsed and indexed automatically
 - **🔍 Semantic Search (RAG)** — ask questions and get source-cited answers from your knowledge base
 - **🕸️ Knowledge Graph** — interactive force-directed graph visualizing note connections
-- **🤖 AI Copilot** — streaming chat powered by OpenAI GPT or local Ollama (fully offline)
-- **🔄 Auto Dimension Handling** — switching between OpenAI ↔ Ollama embeddings automatically recreates the vector store
+- **🗑️ Document Deletion** — delete files from SQLite, LanceDB vector database, and local uploads directory at once
+- **🤖 Gemini AI Copilot** — streaming chat powered by `gemini-2.5-flash` and embeddings by `gemini-embedding-2`
+- **🔑 Dynamic API Settings** — configure your Gemini API key and model globally via `.env` OR dynamically inside the browser settings modal (keys are securely sent via request headers)
 
 ---
 
@@ -19,7 +20,7 @@ A local-first, RAG-powered personal knowledge management system. Upload PDFs, Ma
 
 ### Prerequisites
 - Python 3.10+
-- [Ollama](https://ollama.com/) (for local/offline mode) **or** an OpenAI API key (for cloud mode)
+- A Google Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey)
 
 ### 1. Clone & set up the environment
 
@@ -28,47 +29,36 @@ git clone https://github.com/pradnya-devendra-ukey/second-brain-os.git
 cd second-brain-os
 
 python -m venv venv
-# Windows:
+# Windows (PowerShell):
+.\venv\Scripts\Activate.ps1
+# Windows (CMD):
 venv\Scripts\activate
 # macOS/Linux:
 source venv/bin/activate
 
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 ```
 
 ### 2. Configure environment variables
 
 ```bash
 cp .env.example .env
-# Edit .env with your preferred settings
+# Edit .env and paste your Gemini API key (optional - can also be configured in the UI)
 ```
 
-**For local/offline mode (Ollama):**
+Edit `.env`:
 ```env
-USE_LOCAL_LLM=True
-OLLAMA_LLM_MODEL=llama3
-OLLAMA_EMBEDDING_MODEL=nomic-embed-text
-```
-Pull required models first:
-```bash
-ollama pull llama3
-ollama pull nomic-embed-text
-```
-
-**For cloud mode (OpenAI):**
-```env
-USE_LOCAL_LLM=False
-OPENAI_API_KEY=sk-...your-key...
+GEMINI_API_KEY=AIzaSy...your-gemini-key...
 ```
 
 ### 3. Start the server
 
 ```bash
 # Windows (double-click or run in terminal):
-start.bat
+.\start.bat
 
 # Or manually:
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --app-dir backend
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --app-dir backend --reload
 ```
 
 Open **http://localhost:8000** in your browser.
@@ -94,7 +84,7 @@ second-brain-os/
 │   │   └── services/
 │   │       ├── document_parser.py  # PDF / MD / TXT extraction
 │   │       ├── rag_service.py      # Chunking + LLM streaming
-│   │       └── vector_db.py        # LanceDB embed/search (auto-dim fix)
+│   │       └── vector_db.py        # LanceDB embed/search
 │   ├── static/
 │   │   ├── index.html           # Single-page frontend
 │   │   ├── index.css            # Styles
@@ -114,8 +104,8 @@ second-brain-os/
 | Backend | FastAPI + Uvicorn |
 | Database | SQLite (SQLAlchemy) |
 | Vector Store | LanceDB |
-| Embeddings | OpenAI `text-embedding-3-small` or Ollama `nomic-embed-text` |
-| LLM | OpenAI GPT-4o-mini or Ollama `llama3` |
+| Embeddings | Google Gemini `gemini-embedding-2` |
+| LLM | Google Gemini `gemini-2.5-flash` |
 | Document Parsing | PyMuPDF (PDF), plain text for MD/TXT |
 | Frontend | Vanilla HTML/CSS/JS (no framework) |
 
@@ -124,5 +114,5 @@ second-brain-os/
 ## ⚠️ Important Notes
 
 - **`.env` is never committed** — it contains your API keys. Use `.env.example` as a template.
-- **Switching embedding providers** (OpenAI ↔ Ollama) will automatically drop and recreate the LanceDB vector table (different dimensions). Previously indexed documents will need to be re-uploaded.
+- **Dynamic Headers**: If you configure the API key in the UI settings, it is saved in browser local storage and sent in request headers (`X-Gemini-API-Key` and `X-Gemini-Model`) for dynamic configuration.
 - The `uploads/`, `lancedb_data/`, and `*.db` files are excluded from git and are generated at runtime.
