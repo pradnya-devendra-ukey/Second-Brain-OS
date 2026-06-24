@@ -128,19 +128,15 @@
                 <button class="btn-icon" id="close-settings-modal">&times;</button>
             </div>
             <div class="form-group">
-                <label for="llm-provider">LLM Provider</label>
-                <select id="llm-provider">
-                    <option value="openai">OpenAI (Cloud)</option>
-                    <option value="local">Ollama (Local / Offline)</option>
-                </select>
+                <label for="gemini-api-key">Google Gemini API Key</label>
+                <input type="password" id="gemini-api-key" placeholder="AIza...">
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+                    Get your free key at <a href="https://aistudio.google.com/apikey" target="_blank" style="color: var(--accent);">aistudio.google.com</a>
+                </div>
             </div>
-            <div class="form-group" id="openai-key-group">
-                <label for="openai-api-key">OpenAI API Key</label>
-                <input type="password" id="openai-api-key" placeholder="sk-...">
-            </div>
-            <div class="form-group" id="local-model-group" style="display: none;">
-                <label for="ollama-model">Ollama Model</label>
-                <input type="text" id="ollama-model" value="llama3">
+            <div class="form-group">
+                <label for="gemini-model">Chat Model</label>
+                <input type="text" id="gemini-model" value="gemini-2.5-flash" placeholder="gemini-2.5-flash">
             </div>
             <button class="btn-primary" id="save-settings-btn" style="width: 100%; margin-top: 10px;">Save Configuration</button>
         </div>

@@ -1,8 +1,8 @@
 import json
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from app.database.db import get_db
 from app.database import models
 from app import schemas
@@ -54,8 +54,11 @@ def delete_session(session_id: str, db: Session = Depends(get_db)):
 def stream_chat_response(
     session_id: str,
     request: schemas.ChatQueryRequest,
+    x_gemini_api_key: Optional[str] = Header(None, alias="X-Gemini-API-Key"),
+    x_gemini_model: Optional[str] = Header(None, alias="X-Gemini-Model"),
     db: Session = Depends(get_db)
 ):
+    print(f"[chat] Received x_gemini_api_key: {x_gemini_api_key}, x_gemini_model: {x_gemini_model}")
     """Streams RAG responses for a user query and saves history to SQLite database."""
     session = db.query(models.ChatSession).filter(models.ChatSession.id == session_id).first()
     if not session:
@@ -91,7 +94,12 @@ def stream_chat_response(
         sources_json = None
         
         # Call the RAG stream engine
-        for token in run_rag_stream(request.query, history=history):
+        for token in run_rag_stream(
+            request.query,
+            history=history,
+            api_key=x_gemini_api_key,
+            llm_model=x_gemini_model
+        ):
             if token.startswith("[SOURCES]"):
                 sources_json = token.replace("[SOURCES]", "")
                 yield token

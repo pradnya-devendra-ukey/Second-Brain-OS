@@ -254,6 +254,36 @@ body {
     color: var(--success);
 }
 
+/* Sidebar Delete Button — hover reveal */
+.note-delete-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.note-item:hover .note-delete-btn {
+    opacity: 1;
+}
+
+.note-delete-btn:hover {
+    color: var(--danger);
+    background-color: rgba(239, 68, 68, 0.1);
+    transform: scale(1.1);
+}
+
+.note-delete-btn:active {
+    transform: scale(0.95);
+}
+
 /* Center Panel Layout */
 .main-content {
     display: flex;

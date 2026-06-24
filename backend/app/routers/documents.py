@@ -1,7 +1,8 @@
 import os
 import shutil
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File, status, Header
 from sqlalchemy.orm import Session
+from typing import Optional
 from app.database.db import get_db
 from app.database import models
 from app import schemas
@@ -18,7 +19,7 @@ UPLOAD_DIR = "./uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
-def _index_document_bg(doc_id: int, doc_title: str, cleaned_text: str, file_path: str):
+def _index_document_bg(doc_id: int, doc_title: str, cleaned_text: str, file_path: str, api_key: str = None):
     """Background task: chunk the document text and embed into LanceDB.
 
     Runs AFTER the HTTP response has already been sent to the browser so the
@@ -29,7 +30,7 @@ def _index_document_bg(doc_id: int, doc_title: str, cleaned_text: str, file_path
     try:
         print(f"[bg] Starting indexing for '{doc_title}' …")
         chunks = chunk_text(cleaned_text)
-        insert_chunks(doc_id, doc_title, chunks)
+        insert_chunks(doc_id, doc_title, chunks, api_key=api_key)
         print(f"[bg] Finished indexing '{doc_title}' ({len(chunks)} chunks)")
     except Exception as e:
         print(f"[bg] Indexing failed for '{doc_title}': {e}")
@@ -39,8 +40,10 @@ def _index_document_bg(doc_id: int, doc_title: str, cleaned_text: str, file_path
 async def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    x_gemini_api_key: Optional[str] = Header(None, alias="X-Gemini-API-Key"),
     db: Session = Depends(get_db),
 ):
+    print(f"[upload] Received x_gemini_api_key: {x_gemini_api_key}")
     """Uploads a PDF, Markdown, or TXT file, parses content, saves to SQLite,
     and schedules vector indexing as a non-blocking background task.
 
@@ -123,6 +126,7 @@ async def upload_document(
         db_note.title,
         cleaned_text,
         file_path,
+        api_key=x_gemini_api_key,
     )
 
     return db_note

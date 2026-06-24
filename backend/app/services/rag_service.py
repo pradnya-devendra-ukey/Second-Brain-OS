@@ -1,13 +1,23 @@
 import json
 from typing import Generator, List, Dict, Any
-from openai import OpenAI
-import httpx
+from google import genai
+from google.genai import types
 from app.config import settings
 from app.services.vector_db import search_vector_db
 
-openai_client = None
-if settings.OPENAI_API_KEY:
-    openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
+# Cache client instances to avoid recreation overhead
+_client_cache = {}
+
+def get_client(api_key: str = None) -> genai.Client:
+    api_key_stripped = api_key.strip() if (api_key and api_key.strip()) else None
+    active_key = api_key_stripped or settings.GEMINI_API_KEY
+    if not active_key:
+        raise ValueError(
+            "Gemini API Key is missing. Please set GEMINI_API_KEY in your .env file or configure it in Settings."
+        )
+    if active_key not in _client_cache:
+        _client_cache[active_key] = genai.Client(api_key=active_key)
+    return _client_cache[active_key]
 
 def chunk_text(text: str, chunk_size: int = 1000, chunk_overlap: int = 200) -> List[str]:
     """Splits a document text into smaller overlapping chunks recursively."""
@@ -74,9 +84,13 @@ def chunk_text(text: str, chunk_size: int = 1000, chunk_overlap: int = 200) -> L
         
     return chunks
 
-def build_rag_prompt(query: str, context_chunks: List[Dict[str, Any]], history: List[Dict[str, str]] = None) -> List[Dict[str, str]]:
-    """Builds a chat message history including relevant knowledge context and prompt guidelines."""
-    system_prompt = (
+def build_rag_prompt(query: str, context_chunks: List[Dict[str, Any]], history: List[Dict[str, str]] = None) -> tuple:
+    """Builds a system instruction and chat history for Gemini.
+    
+    Returns (system_instruction, contents) where contents is a list of
+    Content objects for the Gemini API.
+    """
+    system_instruction = (
         "You are the AI Companion for the Second Brain OS.\n"
         "You help the user explore and synthesize their notes, documents, and personal knowledge base.\n\n"
         "Here are the core rules:\n"
@@ -91,26 +105,42 @@ def build_rag_prompt(query: str, context_chunks: List[Dict[str, Any]], history: 
     for i, chunk in enumerate(context_chunks):
         title = chunk.get("doc_title", "Untitled Document")
         text = chunk.get("text", "")
-        system_prompt += f"Chunk [{i+1}] - File/Note: '{title}':\n{text}\n\n"
+        system_instruction += f"Chunk [{i+1}] - File/Note: '{title}':\n{text}\n\n"
         
-    system_prompt += "--- END CONTEXT CHUNKS ---"
+    system_instruction += "--- END CONTEXT CHUNKS ---"
     
-    messages = [{"role": "system", "content": system_prompt}]
-    
-    # Add chat history if available
+    # Build chat history as Gemini Content objects
+    contents = []
     if history:
         for msg in history:
-            messages.append({"role": msg["role"], "content": msg["content"]})
-            
-    # Add the current user query
-    messages.append({"role": "user", "content": query})
+            contents.append(
+                types.Content(
+                    role="user" if msg["role"] == "user" else "model",
+                    parts=[types.Part.from_text(text=msg["content"])]
+                )
+            )
     
-    return messages
+    # Add the current user query
+    contents.append(
+        types.Content(
+            role="user",
+            parts=[types.Part.from_text(text=query)]
+        )
+    )
+    
+    return system_instruction, contents
 
-def run_rag_stream(query: str, history: List[Dict[str, str]] = None, top_k: int = 5) -> Generator[str, None, None]:
-    """Executes vector search and streams the response from LLM (OpenAI or Ollama)."""
+def run_rag_stream(
+    query: str,
+    history: List[Dict[str, str]] = None,
+    top_k: int = 5,
+    api_key: str = None,
+    llm_model: str = None,
+    embedding_model: str = None
+) -> Generator[str, None, None]:
+    """Executes vector search and streams the response from Gemini."""
     # 1. Search vector DB
-    chunks = search_vector_db(query, top_k=top_k)
+    chunks = search_vector_db(query, top_k=top_k, api_key=api_key, embedding_model=embedding_model)
     
     # Send the retrieved sources first so the frontend knows what is referenced
     sources = []
@@ -125,44 +155,29 @@ def run_rag_stream(query: str, history: List[Dict[str, str]] = None, top_k: int 
     # Format: [SOURCES]json_data[SOURCES]
     yield f"[SOURCES]{json.dumps(sources)}[SOURCES]"
     
-    # 2. Build messages list
-    messages = build_rag_prompt(query, chunks, history)
+    # 2. Build system instruction and contents
+    system_instruction, contents = build_rag_prompt(query, chunks, history)
     
-    # 3. Call LLM with streaming enabled
-    if settings.USE_LOCAL_LLM:
-        try:
-            # Query Ollama streaming
-            with httpx.stream(
-                "POST",
-                f"{settings.OLLAMA_BASE_URL}/api/chat",
-                json={
-                    "model": settings.OLLAMA_LLM_MODEL,
-                    "messages": messages,
-                    "stream": True
-                },
-                timeout=60.0
-            ) as response:
-                response.raise_for_status()
-                for line in response.iter_lines():
-                    if line:
-                        chunk_data = json.loads(line)
-                        if "message" in chunk_data and "content" in chunk_data["message"]:
-                            yield chunk_data["message"]["content"]
-        except Exception as e:
-            yield f"\n\n*Error generating response from local LLM (Ollama): {str(e)}*"
-    else:
-        if not settings.OPENAI_API_KEY:
-            yield "\n\n*Error: OpenAI API Key is missing. Please set it in your .env or configure local LLM.*"
-            return
-            
-        try:
-            stream = openai_client.chat.completions.create(
-                model=settings.LLM_MODEL,
-                messages=messages,
-                stream=True
-            )
-            for chunk in stream:
-                if chunk.choices and chunk.choices[0].delta.content:
-                    yield chunk.choices[0].delta.content
-        except Exception as e:
-            yield f"\n\n*Error generating response from OpenAI: {str(e)}*"
+    # 3. Call Gemini with streaming enabled
+    try:
+        client = get_client(api_key)
+    except ValueError as e:
+        yield f"\n\n*Error: {str(e)}*"
+        return
+        
+    active_llm_model = llm_model or settings.LLM_MODEL
+    try:
+        response = client.models.generate_content_stream(
+            model=active_llm_model,
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                temperature=0.7,
+                max_output_tokens=4096,
+            ),
+        )
+        for chunk in response:
+            if chunk.text:
+                yield chunk.text
+    except Exception as e:
+        yield f"\n\n*Error generating response from Gemini: {str(e)}*"

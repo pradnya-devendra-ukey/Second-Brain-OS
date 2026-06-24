@@ -32,11 +32,8 @@ const settingsBtn = document.getElementById("settings-btn");
 const settingsModal = document.getElementById("settings-modal");
 const closeSettingsModal = document.getElementById("close-settings-modal");
 const saveSettingsBtn = document.getElementById("save-settings-btn");
-const llmProvider = document.getElementById("llm-provider");
-const openaiKeyGroup = document.getElementById("openai-key-group");
-const localModelGroup = document.getElementById("local-model-group");
-const openaiApiKey = document.getElementById("openai-api-key");
-const ollamaModel = document.getElementById("ollama-model");
+const geminiApiKeyInput = document.getElementById("gemini-api-key");
+const geminiModelInput = document.getElementById("gemini-model");
 
 const uploadModal = document.getElementById("upload-modal");
 const closeUploadModal = document.getElementById("close-upload-modal");
@@ -57,39 +54,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // --- SETTINGS STORAGE ---
 function loadSettings() {
-    const provider = localStorage.getItem("llm-provider") || "openai";
-    const apiKey = localStorage.getItem("openai-key") || "";
-    const model = localStorage.getItem("ollama-model") || "llama3";
+    const apiKey = localStorage.getItem("gemini-api-key") || "";
+    const model = localStorage.getItem("gemini-model") || "gemini-2.0-flash";
     
-    llmProvider.value = provider;
-    openaiApiKey.value = apiKey;
-    ollamaModel.value = model;
-    
-    toggleSettingsGroups(provider);
+    if (geminiApiKeyInput) geminiApiKeyInput.value = apiKey;
+    if (geminiModelInput) geminiModelInput.value = model;
 }
 
 function saveSettings() {
-    localStorage.setItem("llm-provider", llmProvider.value);
-    localStorage.setItem("openai-key", openaiApiKey.value);
-    localStorage.setItem("ollama-model", ollamaModel.value);
-    
-    // Call backend API to apply config changes dynamically
-    // In our backend config, we can load configuration variables or pass them as headers/settings updates.
-    // For simplicity, the backend reads from .env directly, but we can pass headers for customized sessions!
-    // To make it easy, we'll send a setting save request or configure headers.
+    localStorage.setItem("gemini-api-key", geminiApiKeyInput.value);
+    localStorage.setItem("gemini-model", geminiModelInput.value);
     
     settingsModal.style.display = "none";
     showNotification("Settings saved successfully.");
-}
-
-function toggleSettingsGroups(provider) {
-    if (provider === "openai") {
-        openaiKeyGroup.style.display = "block";
-        localModelGroup.style.display = "none";
-    } else {
-        openaiKeyGroup.style.display = "none";
-        localModelGroup.style.display = "block";
-    }
 }
 
 // --- API ACTIONS ---
@@ -149,7 +126,18 @@ function renderNotesList(filterText = "") {
                     <span>${new Date(note.updated_at).toLocaleDateString()}</span>
                 </span>
             </div>
+            <button class="note-delete-btn" data-note-id="${note.id}" title="Delete ${escapeHtml(note.title)}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+            </button>
         `;
+        
+        // Wire up the delete button with stopPropagation so it doesn't trigger selectNote
+        const deleteBtn = item.querySelector(".note-delete-btn");
+        deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            handleDeleteNoteById(note.id, note.title);
+        };
+        
         notesList.appendChild(item);
     });
 }
@@ -188,9 +176,13 @@ async function handleNewNote() {
     if (!title || !title.trim()) return;
     
     try {
+        const apiKey = localStorage.getItem("gemini-api-key") || "";
+        const headers = { "Content-Type": "application/json" };
+        if (apiKey) headers["X-Gemini-API-Key"] = apiKey;
+
         const response = await fetch(`${API_BASE}/notes/`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: headers,
             body: JSON.stringify({ title: title.trim(), content: "" })
         });
         
@@ -232,6 +224,33 @@ async function handleDeleteNote() {
     }
 }
 
+async function handleDeleteNoteById(noteId, noteTitle) {
+    if (!confirm(`Are you sure you want to delete "${noteTitle}"? This action cannot be undone.`)) return;
+    
+    try {
+        const response = await fetch(`${API_BASE}/notes/${noteId}`, {
+            method: "DELETE"
+        });
+        if (!response.ok) throw new Error("Failed to delete");
+        
+        notes = notes.filter(n => n.id !== noteId);
+        
+        // If we just deleted the active note, clear the editor
+        if (activeNote && activeNote.id === noteId) {
+            activeNote = null;
+            document.getElementById("note-title").value = "";
+            document.getElementById("note-body").value = "";
+            updateCounts();
+        }
+        
+        renderNotesList();
+        refreshGraphData();
+        showNotification(`"${noteTitle}" deleted successfully.`);
+    } catch (e) {
+        showNotification("Failed to delete: " + e.message, "danger");
+    }
+}
+
 function queueAutoSave() {
     if (!activeNote || (activeNote.is_file && activeNote.file_type === "pdf")) return;
     
@@ -240,9 +259,13 @@ function queueAutoSave() {
     
     saveDebounceTimer = setTimeout(async () => {
         try {
+            const apiKey = localStorage.getItem("gemini-api-key") || "";
+            const headers = { "Content-Type": "application/json" };
+            if (apiKey) headers["X-Gemini-API-Key"] = apiKey;
+
             const response = await fetch(`${API_BASE}/notes/${activeNote.id}`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: headers,
                 body: JSON.stringify({
                     title: noteTitle.value,
                     content: noteBody.value
@@ -293,8 +316,13 @@ async function uploadFile(file) {
     formData.append("file", file);
 
     try {
+        const apiKey = localStorage.getItem("gemini-api-key") || "";
+        const headers = {};
+        if (apiKey) headers["X-Gemini-API-Key"] = apiKey;
+
         const response = await fetch(`${API_BASE}/documents/upload`, {
             method: "POST",
+            headers: headers,
             body: formData
         });
 
@@ -347,7 +375,12 @@ async function handleChatSubmit(e) {
     
     try {
         // Build settings header properties dynamically based on local configuration
+        const apiKey = localStorage.getItem("gemini-api-key") || "";
+        const modelName = localStorage.getItem("gemini-model") || "";
+        
         const headers = { "Content-Type": "application/json" };
+        if (apiKey) headers["X-Gemini-API-Key"] = apiKey;
+        if (modelName) headers["X-Gemini-Model"] = modelName;
         
         // Pass model custom selection preferences via Request JSON to enable live config changes
         const response = await fetch(`${API_BASE}/chat/sessions/${chatSessionId}/stream`, {
@@ -567,7 +600,6 @@ function setupEventHandlers() {
     settingsBtn.onclick = () => { settingsModal.style.display = "flex"; };
     closeSettingsModal.onclick = () => { settingsModal.style.display = "none"; };
     saveSettingsBtn.onclick = saveSettings;
-    llmProvider.onchange = (e) => toggleSettingsGroups(e.target.value);
     
     // Modal controls - Ingestion
     uploadDocBtn.onclick = () => { 

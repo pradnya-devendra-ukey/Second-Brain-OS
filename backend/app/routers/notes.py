@@ -1,8 +1,8 @@
 import re
 import os
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from app.database.db import get_db
 from app.database import models
 from app import schemas
@@ -38,7 +38,11 @@ def get_notes(db: Session = Depends(get_db)):
     return db.query(models.Note).order_by(models.Note.updated_at.desc()).all()
 
 @router.post("/", response_model=schemas.NoteResponse, status_code=status.HTTP_201_CREATED)
-def create_note(note_in: schemas.NoteCreate, db: Session = Depends(get_db)):
+def create_note(
+    note_in: schemas.NoteCreate,
+    x_gemini_api_key: Optional[str] = Header(None, alias="X-Gemini-API-Key"),
+    db: Session = Depends(get_db)
+):
     """Creates a new note, chunks/embeds its content, and processes links."""
     # Check if title already exists
     existing = db.query(models.Note).filter(models.Note.title == note_in.title).first()
@@ -62,7 +66,7 @@ def create_note(note_in: schemas.NoteCreate, db: Session = Depends(get_db)):
     # Process vector embedding
     if db_note.content.strip():
         chunks = chunk_text(db_note.content)
-        insert_chunks(db_note.id, db_note.title, chunks)
+        insert_chunks(db_note.id, db_note.title, chunks, api_key=x_gemini_api_key)
         
     return db_note
 
@@ -101,7 +105,12 @@ def get_note(note_id: int, db: Session = Depends(get_db)):
     return note
 
 @router.put("/{note_id}", response_model=schemas.NoteResponse)
-def update_note(note_id: int, note_in: schemas.NoteUpdate, db: Session = Depends(get_db)):
+def update_note(
+    note_id: int,
+    note_in: schemas.NoteUpdate,
+    x_gemini_api_key: Optional[str] = Header(None, alias="X-Gemini-API-Key"),
+    db: Session = Depends(get_db)
+):
     """Updates a note, regenerates chunks/embeddings, and updates links."""
     note = db.query(models.Note).filter(models.Note.id == note_id).first()
     if not note:
@@ -128,7 +137,7 @@ def update_note(note_id: int, note_in: schemas.NoteUpdate, db: Session = Depends
     delete_chunks(note.id)
     if note.content.strip():
         chunks = chunk_text(note.content)
-        insert_chunks(note.id, note.title, chunks)
+        insert_chunks(note.id, note.title, chunks, api_key=x_gemini_api_key)
         
     return note
 
